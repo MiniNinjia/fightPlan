@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>打飞机</title>
+    <style>
+        .canvas {
+            width: 500px;
+            height: 800px;
+            border: 2px solid #444444;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .score {
+            width: 300px;
+            height: 300px;
+            float: left;
+            border: solid 2px #444444;
+            left: 100px;
+            top: 100px;
+            position: absolute;
+            text-align: center;
+            line-height: 100px;
+        }
+    </style>
+</head>
+<body>
+<div class="score">
+    <h1>分数:</h1>
+    <h1 id="score">400</h1>
+</div>
+
+<canvas class="canvas" id="canvas">
+
+</canvas>
+</body>
+</html>
+<script>
+    var cWidth = 500;
+    var cHeigth = 800;
+    var selfWidth = 100;
+    var selftHeight = 100;
+    var hp = 100;
+    var kinds = [2, 3, 1, 1, 2, 1, 1, 1, 1, 2];
+    var enemys = [];
+    var bullets = [];
+    var score = 0;
+
+    var enemysBullets = [];
+
+    window.onload = function () {
+        var c = document.getElementById('canvas');
+        var cxt = c.getContext('2d');
+        cxt.beginPath();
+        c.height = cHeigth;
+        c.width = cWidth;
+        var _self = new Self();
+        var gameOver = false;
+
+        var hScore = document.getElementById('score');
+
+
+        var boomImg = new Image();
+        boomImg.src = './boom.png';
+        var selfImg = new Image();
+        selfImg.src = './self.gif';
+        var enemyImg = new Image();
+        enemyImg.src = './boss.gif';
+        var bulletImg = new Image();
+        bulletImg.src = './bullet.jpg';
+
+        document.getElementsByTagName('body')[0].onkeydown = function (e) {
+            var up = 38;
+            var down = 40;
+            var left = 37;
+            var right = 39;
+            switch (e.keyCode) {
+                case up:
+                    _self.speedUp = _self.speed;
+                    break;
+                case down:
+                    _self.speedDown = _self.speed;
+                    break;
+                case left:
+                    _self.speedLeft = _self.speed;
+                    break;
+                case right:
+                    _self.speedRight = _self.speed;
+            }
+        };
+        document.getElementsByTagName('body')[0].onkeyup = function (e) {
+            var up = 38;
+            var down = 40;
+            var left = 37;
+            var right = 39;
+            switch (e.keyCode) {
+                case up:
+                    _self.speedUp = 0;
+                    break;
+                case down:
+                    _self.speedDown = 0;
+                    break;
+                case left:
+                    _self.speedLeft = 0;
+                    break;
+                case right:
+                    _self.speedRight = 0;
+            }
+        };
+        Painter();
+        function Painter() {
+            cxt.clearRect(0, 0, 500, 800);
+            cxt.beginPath();
+            cxt.drawImage(selfImg, _self.locX, _self.locY, 100, 100);
+            cxt.closePath();
+            cxt.fill();
+            var time = null;
+            time = setInterval(function () {
+                cxt.clearRect(0, 0, 500, 800);
+                if (enemys.length < 10) {
+                    var enemy = new Enemy();
+                    enemys.push(enemy);
+                }
+                hScore.innerText = score;
+                cxt.beginPath();
+                if (_self.flag >= 0) {
+                    _self.speedUp = 0;
+                    _self.speedDown = 0;
+                    _self.speedLeft = 0;
+                    _self.speedRight = 0;
+                    cxt.drawImage(boomImg, _self.flag * 64, 0, 65, 65, _self.locX, _self.locY, 100, 100);
+                    _self.flag++;
+                    if (_self.flag === 15) {
+                        _self.boom();
+                        clearInterval(time);
+                        setTimeout(function () {
+                            alert('游戏结束了');
+                        }, 2000)
+                    }
+                } else {
+                    //自己的飞机
+                    _self.locX = _self.locX + _self.speedRight - _self.speedLeft;
+                    _self.locY = _self.locY + _self.speedDown - _self.speedUp;
+                    if (_self.locX > cWidth - _self.width / 2) {
+                        _self.locX = cWidth - _self.width / 2
+                    }
+                    if (_self.locX < -_self.width / 2) {
+                        _self.locX = -_self.width / 2;
+                    }
+                    if (_self.locY > cHeigth - _self.height) {
+                        _self.locY = cHeigth - _self.height
+                    }
+                    if (_self.locY < _self.height) {
+                        _self.locY = _self.height;
+                    }
+                    cxt.drawImage(selfImg, _self.locX, _self.locY, 100, 100);
+                    //子弹
+                    for (var j in bullets) {
+                        bullets[j].locX = bullets[j].locX + bullets[j].speedX;
+                        bullets[j].locY = bullets[j].locY + bullets[j].speedY;
+                        if (bullets[j].locX > cWidth || bullets[j].locX < -bullets[j].width || bullets[j].locY > cHeigth || bullets[j].locY < -bullets[j].height) {
+                            bullets.splice(j, 1);
+                        }
+                        cxt.drawImage(bulletImg, bullets[j].locX, bullets[j].locY, bullets[j].width, bullets[j].height);
+                    }
+                    //玩家中弹检测
+                    for (var m in enemysBullets) {
+                        enemysBullets[m].locX = enemysBullets[m].locX + enemysBullets[m].speedX;
+                        enemysBullets[m].locY = enemysBullets[m].locY + enemysBullets[m].speedY;
+                        cxt.drawImage(bulletImg, enemysBullets[m].locX, enemysBullets[m].locY, enemysBullets[m].width, enemysBullets[m].height);
+                        if (enemysBullets[m].locX > cWidth || enemysBullets[m].locX < -enemysBullets[m].width || enemysBullets[m].locY > cHeigth || enemysBullets[m].locY < -enemysBullets[m].height) {
+                            enemysBullets.splice(m, 1);
+                        } else {
+                            if (Math.pow(enemysBullets[m].locX + enemysBullets[m].width / 2 - _self.locX - _self.width / 2, 2) + Math.pow(enemysBullets[m].locY + enemysBullets[m].height / 2 - _self.locY - _self.height / 2, 2) < Math.pow(enemysBullets[m].width / 2 + _self.width / 2, 2)) {
+                                _self.hp = _self.hp - enemysBullets[m].demage;
+                                if (_self.hp < 0) {
+                                    _self.hp = 0;
+                                    _self.flag = 0;
+                                }
+                                enemysBullets.splice(m, 1);
+                            }
+                        }
+                    }
+                    //敌机
+                    for (var i in enemys) {
+                        if (enemys[i].flag >= 0) {
+                            enemys[i].speedX = 0;
+                            enemys[i].speedY = 0;
+                            cxt.drawImage(boomImg, enemys[i].flag * 64, 0, 65, 65, enemys[i].locX, enemys[i].locY, 100, 100);
+                            enemys[i].flag++;
+                            if (enemys[i].flag === 15) {
+                                score = score + enemys[i].kind * 10;
+                                enemys[i].boom();
+                                enemys[i] = null;
+                                enemys.splice(i, 1)
+                              //  console.log(enemys.kind)
+                            }
+                        } else {
+                            enemys[i].locX = enemys[i].locX + enemys[i].speedX;
+                            enemys[i].locY = enemys[i].locY + enemys[i].speedY;
+                            if (Math.pow(enemys[i].locX - _self.locX, 2) + Math.pow(enemys[i].locY - _self.locY, 2) < Math.pow(enemys[i].width / 2 + _self.width / 2, 2)) {
+                                _self.hp = _self.hp - enemys[i].crashDemage;
+                                enemys[i].flag = 0;
+                                if (_self.hp < 0) {
+                                    _self.hp = 0;
+                                    _self.flag = 0;
+                                }
+                            }
+                            for (var k in bullets) {
+                                if (Math.pow(enemys[i].locX + enemys[i].width / 2 - (bullets[k].locX + bullets[k].width / 2), 2) + Math.pow(enemys[i].locY + enemys[i].height / 2 - (bullets[k].locY + bullets[k].height / 2), 2) < Math.pow(enemys[i].width / 2 + bullets[k].width / 2, 2)) {
+                                    enemys[i].flag = 0;
+                                    bullets.splice(k, 1);
+                                }
+                            }
+                            cxt.drawImage(enemyImg, enemys[i].locX, enemys[i].locY, enemys[i].width, enemys[i].height);
+                            if (enemys[i].locX > cWidth || enemys[i].locX < -enemys[i].width || enemys[i].locY > cHeigth) {
+                                {
+                                    enemys[i].boom();
+                                    enemys[i] = null;
+                                    enemys.splice(i, 1)
+                                }
+                            }
+                        }
+                    }
+                }
+                cxt.rect(0, 0, cWidth * (_self.hp / hp), 10);
+                cxt.fillStyle = 'red';
+                cxt.closePath();
+                cxt.fill();
+            }, 35)
+
+        }
+
+
+        //子弹
+        function Bullet(x, y, speed, demage) {
+            this.kind = 1;
+            this.speedX = 0;
+            this.speedY = speed;
+            this.width = 15;
+            this.height = 24;
+            this.locX = x - this.width / 2;
+            this.locY = y;
+            this.demage = demage;
+        }
+
+        //敌机对象
+        function Enemy() {
+            this.kind = kinds[Math.floor(Math.random() * 10)];
+            this.speedX = Math.floor(Math.random() * 4 - 1) * this.kind;
+            this.speedY = Math.floor(Math.random() * 3 + 1) * this.kind;
+            this.locX = Math.floor(Math.random() * cWidth);
+            this.locY = 0;
+            this.width = 100;
+            this.height = 100;
+            this.hp = 1000 - this.kind * 100;
+            this.bulletSpeed = this.kind;//子弹的速度
+            this.demage = this.kind * 5;//伤害
+            this.firingRate = this.kind;//射速
+            this.fireOptions = this.kind;
+            this.flag = -1;
+            this.crashDemage = this.kind * 5;
+            this.boom = function () {
+                // this.flag = 0;
+                clearInterval(this.time);
+            };
+            this.time = null;
+            this.fire = function () {
+                var that = this;
+                this.time = setInterval(function () {
+                    var rand = Math.random() * 9;
+                    if (rand < that.fireOptions) {
+                        var bullet = new Bullet(that.locX + that.width / 2, that.locY + that.height, 10, that.demage);
+                        enemysBullets.push(bullet);
+                    }
+                }, 1000 / this.firingRate)
+            };
+            this.fire();
+        }
+
+        //玩家对象
+        function Self() {
+            this.speed = 10;
+            this.level = 1;
+            this.speedUp = 0;
+            this.speedDown = 0;
+            this.speedLeft = 0;
+            this.speedRight = 0;
+            this.locX = (cWidth - selfWidth) / 2;
+            this.locY = cHeigth - selftHeight;
+            this.width = 100;
+            this.height = 100;
+            this.bulletSpeed = this.level;//子弹的速度
+            this.firingRate = this.level;//射速
+            this.hp = hp;
+            this.flag = -1;
+            this.boom = function () {
+                this.flag = 0;
+                clearInterval(this.time);
+            };
+            this.time = null;
+            this.fire = function () {
+                var that = this;
+                this.time = setInterval(function () {
+                    var bullet = new Bullet(that.locX + that.width / 2, that.locY, -20);
+                    bullets.push(bullet);
+                }, 300)
+            };
+            this.fire();
+        }
+    };
+</script>
